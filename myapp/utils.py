@@ -3,27 +3,60 @@ import requests
 import xmltodict
 import pdfplumber
 import yake
-
-
+from datetime import datetime
+import fitz
 from urllib.parse import urlparse, parse_qs
-import gdown
 
 
 def download_pdf_from_drive(url):
     response = requests.get(url)
 
     if response.status_code == 200:
-        file_id = url.split("id=")[1]
-
-        # Use the file ID as the file name with .pdf extension
-        file_name = f"{file_id}.pdf"
-        with open(file_name, "wb") as f:
-            f.write(response.content)
-            print(f"File '{file_name}' has been downloaded and saved.")
-        return file_name
+        # Check if "id=" is present in the URL
+        if "id=" in url:
+            file_id = url.split("id=")[1]
+            # Use the file ID as the file name with .pdf extension
+            file_name = f"{file_id}.pdf"
+            with open(file_name, "wb") as f:
+                f.write(response.content)
+                print(f"File '{file_name}' has been downloaded and saved.")
+            return file_name
+        else:
+            print("Error: 'id=' not found in the URL.")
+            return None
     else:
         print(f"Failed to download the file. Status code: {response.status_code}")
         return None
+
+
+def extract_publication_date(pdf_path):
+    try:
+        doc = fitz.open(pdf_path)
+        metadata = doc.metadata
+        # Check if the metadata contains creation date information
+        if "created" in metadata:
+            pub_date = metadata["created"]
+        elif "modDate" in metadata:
+            pub_date = metadata["modDate"]
+        else:
+            print("Publication date not found in metadata.")
+            return None
+        # Extract date from the "D:YYYYMMDD" format
+        if pub_date.startswith("D:"):
+            pub_date = pub_date[2:]
+        # Convert the date to day-month-year format
+        pub_date_obj = datetime.strptime(pub_date[:8], "%Y%m%d")
+        return {
+            "day": pub_date_obj.day,
+            "month": pub_date_obj.strftime("%B"),
+            "year": pub_date_obj.year,
+        }
+    except Exception as e:
+        print(f"Error: {e}")
+        return None
+    finally:
+        if doc:
+            doc.close()
 
 
 def extract_keywords(pdf_path, num_keywords):
@@ -55,7 +88,7 @@ def download_pdf_from_url(url):
 
 def process_pdf_file(pdf_path):
     # Set the URL for the CERMINE REST service
-    cermine_url = "http://cermine.ceon.pl/extract.do"
+    cermine_url = "http://localhost:8072/extract.do"
 
     # Prepare the data for the POST request
     files = {"file": open(pdf_path, "rb")}
@@ -83,12 +116,16 @@ def process_pdf_file(pdf_path):
             new_dict["contrib-group"]["aff"] = [new_dict["contrib-group"]["aff"]]
 
         authors = []
-        if isinstance(new_dict["contrib-group"]["contrib"], list):
-            authors = [
-                author["string-name"] for author in new_dict["contrib-group"]["contrib"]
-            ]
+        if "contrib-group" in new_dict and "contrib" in new_dict["contrib-group"]:
+            if isinstance(new_dict["contrib-group"]["contrib"], list):
+                authors = [
+                    author["string-name"]
+                    for author in new_dict["contrib-group"]["contrib"]
+                ]
+            else:
+                authors = [new_dict["contrib-group"]["contrib"]["string-name"]]
         else:
-            authors = [new_dict["contrib-group"]["contrib"]["string-name"]]
+            authors = []
 
         metadata = {
             "title": new_dict.get("title-group", {}).get(
@@ -101,6 +138,10 @@ def process_pdf_file(pdf_path):
             ],
             "abstract": new_dict.get("abstract", {}).get("p", "No abstract available"),
         }
+        if "pub-date" in new_dict:
+            metadata["pub-date"] = new_dict["pub-date"]
+        else:
+            metadata["pub-date"] = extract_publication_date(pdf_path)
 
         # Access attributes directly without using json.dumps
         text_dict = cermine_json["article"]["body"]

@@ -12,7 +12,6 @@ def download_pdf(request, url):
     file_name = download_pdf_from_url(url)
 
     if file_name:
-        # Do something with the downloaded file, like serving it as a response or further processing
         metadata = process_pdf_file(file_name)
         try:
             os.remove(file_name)
@@ -26,6 +25,7 @@ def download_pdf(request, url):
                 "authors": metadata["authors"],
                 "institutions": metadata["institutions"],
                 "keywords": metadata["keywords"],
+                "publication-date": metadata["pub-date"],
                 "abstract": metadata["abstract"],
                 "text": metadata["text"],
                 "references": metadata["references"],
@@ -58,6 +58,7 @@ def download_pdf_drive(request, id):
                 "authors": metadata["authors"],
                 "institutions": metadata["institutions"],
                 "keywords": metadata["keywords"],
+                "publication-date": metadata["pub-date"],
                 "abstract": metadata["abstract"],
                 "text": metadata["text"],
                 "references": metadata["references"],
