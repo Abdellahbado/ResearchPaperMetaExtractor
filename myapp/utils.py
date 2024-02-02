@@ -3,8 +3,6 @@ import requests
 import xmltodict
 import pdfplumber
 import yake
-from datetime import datetime
-import fitz
 from urllib.parse import urlparse, parse_qs
 
 
@@ -29,34 +27,24 @@ def download_pdf_from_drive(url):
         return None
 
 
-def extract_publication_date(pdf_path):
-    try:
-        doc = fitz.open(pdf_path)
-        metadata = doc.metadata
-        # Check if the metadata contains creation date information
-        if "created" in metadata:
-            pub_date = metadata["created"]
-        elif "modDate" in metadata:
-            pub_date = metadata["modDate"]
-        else:
-            print("Publication date not found in metadata.")
-            return None
-        # Extract date from the "D:YYYYMMDD" format
-        if pub_date.startswith("D:"):
-            pub_date = pub_date[2:]
-        # Convert the date to day-month-year format
-        pub_date_obj = datetime.strptime(pub_date[:8], "%Y%m%d")
-        return {
-            "day": pub_date_obj.day,
-            "month": pub_date_obj.strftime("%B"),
-            "year": pub_date_obj.year,
-        }
-    except Exception as e:
-        print(f"Error: {e}")
-        return None
-    finally:
-        if doc:
-            doc.close()
+def extract_pdf_keywords_and_creation_date(pdf_file_path):
+    with pdfplumber.open(pdf_file_path) as pdf:
+        metadata = pdf.metadata
+
+    keywords = metadata.get("Keywords", "")
+    keywords_list = (
+        [keyword.strip() for keyword in keywords.split(",")] if keywords else []
+    )
+    creation_date_str = metadata.get("CreationDate", "")
+    creation_date_dict = {}
+    if creation_date_str:
+        # Extracting year, month, day from the string
+        year = creation_date_str[2:6]
+        month = creation_date_str[6:8]
+        day = creation_date_str[8:10]
+        creation_date_dict = {"year": year, "month": month, "day": day}
+
+    return keywords_list, creation_date_dict
 
 
 def extract_keywords(pdf_path, num_keywords):
@@ -138,11 +126,9 @@ def process_pdf_file(pdf_path):
             ],
             "abstract": new_dict.get("abstract", {}).get("p", "No abstract available"),
         }
-        if "pub-date" in new_dict:
-            metadata["pub-date"] = new_dict["pub-date"]
-        else:
-            metadata["pub-date"] = extract_publication_date(pdf_path)
 
+        keywords, creation_date = extract_pdf_keywords_and_creation_date(pdf_path)
+        metadata["pub-date"] = creation_date
         # Access attributes directly without using json.dumps
         text_dict = cermine_json["article"]["body"]
 
@@ -166,8 +152,6 @@ def process_pdf_file(pdf_path):
         references = ref_list[:3] if isinstance(ref_list, list) else []
         reference_strings = []
         for reference in references:
-            ref_id = reference["@id"]
-
             # Check if 'string-name' and 'mixed-citation' keys are present
             if (
                 "string-name" in reference["mixed-citation"]
@@ -193,6 +177,7 @@ def process_pdf_file(pdf_path):
         # Printing the result
         metadata["references"] = reference_strings
         metadata["keywords"] = extract_keywords(pdf_path, 20)
+        metadata["keywords"] += keywords
         return metadata
 
     else:
