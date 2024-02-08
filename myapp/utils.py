@@ -4,6 +4,7 @@ import xmltodict
 import pdfplumber
 import yake
 from urllib.parse import urlparse, parse_qs
+from pdfrw import PdfReader
 
 
 def download_pdf_from_drive(url):
@@ -25,27 +26,6 @@ def download_pdf_from_drive(url):
     else:
         print(f"Failed to download the file. Status code: {response.status_code}")
         return None
-
-
-def extract_pdf_keywords_and_creation_date(pdf_file_path):
-    with pdfplumber.open(pdf_file_path) as pdf:
-        metadata = pdf.metadata
-
-    keywords = metadata.get("Keywords", "")
-    keywords_list = (
-        [keyword.strip() for keyword in keywords.split(",")] if keywords else []
-    )
-    creation_date_str = metadata.get("CreationDate", "")
-    creation_date_dict = {}
-    if creation_date_str:
-        # Extracting year, month, day from the string
-        year = creation_date_str[2:6]
-        month = creation_date_str[6:8]
-        day = creation_date_str[8:10]
-        creation_date_dict = {"year": year, "month": month, "day": day}
-
-    return keywords_list, creation_date_dict
-
 
 def extract_keywords(pdf_path, num_keywords):
     with pdfplumber.open(pdf_path) as pdf:
@@ -72,6 +52,27 @@ def download_pdf_from_url(url):
     else:
         print(f"Failed to download the file. Status code: {response.status_code}")
         return None
+
+
+def extract_pdf_keywords_and_creation_date(pdf_file_path):
+    with pdfplumber.open(pdf_file_path) as pdf:
+        metadata = pdf.metadata
+
+    keywords = metadata.get("Keywords", "")
+    keywords_list = (
+        [keyword.strip() for keyword in keywords.split(",")] if keywords else []
+    )
+    creation_date_str = metadata.get("CreationDate", "")
+    creation_date_dict = {}
+    if creation_date_str:
+        # Extracting year, month, day from the string
+        year = creation_date_str[2:6]
+        month = creation_date_str[6:8]
+        day = creation_date_str[8:10]
+        creation_date_dict = {"year": year, "month": month, "day": day}
+
+    return keywords_list, creation_date_dict
+
 
 
 def process_pdf_file(pdf_path):
@@ -114,7 +115,7 @@ def process_pdf_file(pdf_path):
                 authors = [new_dict["contrib-group"]["contrib"]["string-name"]]
         else:
             authors = []
-
+        keywords, creation_date = extract_pdf_keywords_and_creation_date(pdf_path)
         metadata = {
             "title": new_dict.get("title-group", {}).get(
                 "article-title", "Unknown Title"
@@ -127,7 +128,6 @@ def process_pdf_file(pdf_path):
             "abstract": new_dict.get("abstract", {}).get("p", "No abstract available"),
         }
 
-        keywords, creation_date = extract_pdf_keywords_and_creation_date(pdf_path)
         metadata["pub-date"] = creation_date
         # Access attributes directly without using json.dumps
         text_dict = cermine_json["article"]["body"]
@@ -160,9 +160,11 @@ def process_pdf_file(pdf_path):
                 names = reference["mixed-citation"]["string-name"]
                 authors = ", ".join(
                     [
-                        f"{name.get('given-names', '')} {name.get('surname', '')}"
-                        if isinstance(name, dict)
-                        else name
+                        (
+                            f"{name.get('given-names', '')} {name.get('surname', '')}"
+                            if isinstance(name, dict)
+                            else name
+                        )
                         for name in names
                     ]
                 )
