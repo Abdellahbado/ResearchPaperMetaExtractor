@@ -4,8 +4,8 @@ This Django application provides a powerful and user-friendly API to extract var
 
 Key Features:
 
-    Versatile Metadata Extraction: Extract comprehensive metadata from diverse PDF sources, including title, authors, institutions, abstract, full text, references, publication date, and keywords.
-    Multiple Source Options: Process PDFs hosted online via URLs or conveniently access them from your OpenDrive account for seamless workflow.
-    RESTful API Endpoint: Interact with the application programmatically through a well-defined and accessible RESTful API endpoint.
-    JSON Output: Receive extracted metadata in a structured JSON format, ready for consumption by your applications.
-    Docker-based Cermine Integration: Leverage the Cermine API's advanced metadata extraction capabilities by running it as a Docker container.
+- Versatile Metadata Extraction: Extract comprehensive metadata from diverse PDF sources, including title, authors, institutions, abstract, full text, references, publication date, and keywords.
+Multiple Source Options: Process PDFs hosted online via URLs or conveniently access them from your OpenDrive account for seamless workflow.
+- RESTful API Endpoint: Interact with the application programmatically through a well-defined and accessible RESTful API endpoint.
+- JSON Output: Receive extracted metadata in a structured JSON format, ready for consumption by your applications.
+- Docker-based Cermine Integration: Leverage the Cermine API's advanced metadata extraction capabilities by running it as a Docker container.
