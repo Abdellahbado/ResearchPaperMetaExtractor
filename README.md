@@ -1,4 +1,4 @@
-**Django Metadata Extraction API - Extract Metadata from PDFs Online or from Open Drive**
+## Django Metadata Extraction API - Extract Metadata from PDFs Online or from Open Drive
 
 This Django application provides a powerful and user-friendly API to extract various metadata elements (title, authors, institutions, abstract, text, references, publication date, keywords) from PDF documents, leveraging both online sources and OpenDrive storage connectivity. It partially integrates the Cermine API (accessed via its Docker container) for exceptional metadata extraction capabilities.
 
